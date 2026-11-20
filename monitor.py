@@ -159,7 +159,7 @@ def main():
                   f"Limites: S25 Ultra até {brl(MODELOS['S25 Ultra'][1])} · A57 até {brl(MODELOS['A57'][1])} (valor “Sai por”).",
                   "", "Mais baratos agora:"]
         for modelo in MODELOS:
-            lista = sorted((v, p) for _, (m, v, p) in achados.items() if m == modelo)
+            lista = sorted(((v, p) for _, (m, v, p) in achados.items() if m == modelo), key=lambda x: x[0])
             if lista:
                 v, p = lista[0]
                 linhas.append(f"• {modelo}: {brl(v)} — {p.get('sellerName', '')}\n  {SITE}/{p.get('slug', '')}")
