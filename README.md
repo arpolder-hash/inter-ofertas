@@ -9,7 +9,7 @@ Checa o Shopping do Inter a cada 20 minutos e avisa no Telegram quando aparece
    Depois abra o seu bot e mande qualquer mensagem (ex.: "oi").
 2. **GitHub:** em *Settings → Secrets and variables → Actions*:
    - aba **Secrets** → *New repository secret* → nome `TELEGRAM_TOKEN`, valor = o token.
-   - (opcional) aba **Variables** → `LIMITE_S25ULTRA` (padrão 4000), `LIMITE_A57` (padrão 1800),
+   - (opcional) aba **Variables** → `LIMITE_S25ULTRA` (padrão 4000), `LIMITE_A57` (padrão 1800), `LIMITE_S25ULTRA_WATCH` (padrão 5000), `LIMITE_A57_WATCH` (padrão 3000),
      `INCLUIR_USADOS` = `1` para incluir usados.
 3. Aba **Actions** → *Monitor Shopping do Inter* → **Run workflow**.
    Em segundos chega no Telegram “Bot ligado!” com os preços atuais.

@@ -27,6 +27,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           LIMITE_S25ULTRA: ${{ vars.LIMITE_S25ULTRA }}
           LIMITE_A57: ${{ vars.LIMITE_A57 }}
+          LIMITE_S25ULTRA_WATCH: ${{ vars.LIMITE_S25ULTRA_WATCH }}
+          LIMITE_A57_WATCH: ${{ vars.LIMITE_A57_WATCH }}
           INCLUIR_USADOS: ${{ vars.INCLUIR_USADOS }}
         run: python monitor.py
       - name: Salvar estado

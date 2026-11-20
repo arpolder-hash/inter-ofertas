@@ -26,9 +26,13 @@ BUSCAS = ["galaxy s25 ultra", "s25 ultra", "galaxy a57", "a57"]
 PAGINAS = 10  # 36 produtos por página
 ESTADO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "estado.json")
 
+RELOGIO = re.compile(r"watch|rel[oó]gio", re.I)
 MODELOS = {
     "S25 Ultra": (re.compile(r"s\s?25\s*ultra", re.I), float(os.getenv("LIMITE_S25ULTRA") or 4000)),
     "A57": (re.compile(r"\ba\s?57\b", re.I), float(os.getenv("LIMITE_A57") or 1800)),
+    # combos com relógio: limite próprio (preço total do pacote)
+    "S25 Ultra + Watch": (None, float(os.getenv("LIMITE_S25ULTRA_WATCH") or 5000)),
+    "A57 + Watch": (None, float(os.getenv("LIMITE_A57_WATCH") or 3000)),
 }
 ACESSORIO = re.compile(
     r"capa|case|pel[ií]cula|vidro|caneta|carregador|cabo|fonte|suporte|"
@@ -81,8 +85,8 @@ def classificar(p):
     if USADO.search(nome) and not INCLUIR_USADOS:
         return None
     for modelo, (rx, _) in MODELOS.items():
-        if rx.search(nome):
-            return modelo
+        if rx is not None and rx.search(nome):
+            return f"{modelo} + Watch" if RELOGIO.search(nome) else modelo
     return None
 
 
@@ -156,7 +160,7 @@ def main():
 
     if primeira_vez:
         linhas = ["✅ <b>Bot ligado!</b> Vou checar o Shopping do Inter a cada 20 minutos.",
-                  f"Limites: S25 Ultra até {brl(MODELOS['S25 Ultra'][1])} · A57 até {brl(MODELOS['A57'][1])} (valor “Sai por”).",
+                  "Limites (valor “Sai por”): " + " · ".join(f"{k} até {brl(v[1])}" for k, v in MODELOS.items()),
                   "", "Mais baratos agora:"]
         for modelo in MODELOS:
             lista = sorted(((v, p) for _, (m, v, p) in achados.items() if m == modelo), key=lambda x: x[0])
