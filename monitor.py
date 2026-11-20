@@ -7,7 +7,7 @@ Variáveis de ambiente (secrets no GitHub):
                     sozinho a partir da última mensagem enviada ao bot)
 Ajustes opcionais (variáveis do repositório):
   LIMITE_S25ULTRA   padrão 4000   (valor "Sai por", já com cashback)
-  LIMITE_A57        padrão 1800
+  LIMITE_A57        padrão 2000
   INCLUIR_USADOS    "1" para incluir usados/recondicionados (padrão: não)
   QUEDA_MINIMA      padrão 0.05   (avisa também quando o preço cai 5%+)
 """
@@ -29,10 +29,10 @@ ESTADO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "estado.json")
 RELOGIO = re.compile(r"watch|rel[oó]gio", re.I)
 MODELOS = {
     "S25 Ultra": (re.compile(r"s\s?25\s*ultra", re.I), float(os.getenv("LIMITE_S25ULTRA") or 4000)),
-    "A57": (re.compile(r"\ba\s?57\b", re.I), float(os.getenv("LIMITE_A57") or 1800)),
+    "A57": (re.compile(r"\ba\s?57\b", re.I), float(os.getenv("LIMITE_A57") or 2000)),
     # combos com relógio: limite próprio (preço total do pacote)
     "S25 Ultra + Watch": (None, float(os.getenv("LIMITE_S25ULTRA_WATCH") or 5000)),
-    "A57 + Watch": (None, float(os.getenv("LIMITE_A57_WATCH") or 3000)),
+    "A57 + Watch": (None, float(os.getenv("LIMITE_A57_WATCH") or 2500)),
 }
 ACESSORIO = re.compile(
     r"capa|case|pel[ií]cula|vidro|caneta|carregador|cabo|fonte|suporte|"
