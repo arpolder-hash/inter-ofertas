@@ -120,16 +120,16 @@ def main():
     global CHAT_ID
     if not TOKEN:
         sys.exit("Falta o secret TELEGRAM_TOKEN.")
-    if not CHAT_ID:
-        CHAT_ID = descobrir_chat()
-        if not CHAT_ID:
-            sys.exit("Mande qualquer mensagem para o seu bot no Telegram e rode de novo.")
-        print(f"Chat id descoberto: {CHAT_ID} (pode salvar como TELEGRAM_CHAT_ID)")
-
     estado = {}
     if os.path.exists(ESTADO):
         with open(ESTADO, encoding="utf-8") as f:
             estado = json.load(f)
+    chat_salvo = str(estado.pop("_chat_id", "") or "")
+    if not CHAT_ID:
+        CHAT_ID = chat_salvo or descobrir_chat()
+        if not CHAT_ID:
+            sys.exit("Mande qualquer mensagem para o seu bot no Telegram e rode de novo.")
+        print("Chat id encontrado.")
     primeira_vez = not estado
 
     achados = {}
@@ -180,6 +180,8 @@ def main():
     # guarda também itens que sumiram nesta rodada, para não re-avisar se voltarem iguais
     for pid, v in estado.items():
         novo_estado.setdefault(pid, v)
+    if not os.getenv("TELEGRAM_CHAT_ID", "").strip():
+        novo_estado["_chat_id"] = CHAT_ID
     with open(ESTADO, "w", encoding="utf-8") as f:
         json.dump(novo_estado, f, ensure_ascii=False, indent=0, sort_keys=True)
 
