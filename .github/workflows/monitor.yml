@@ -1,0 +1,37 @@
+name: Monitor Shopping do Inter
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"   # a cada 20 minutos (o GitHub pode atrasar alguns minutos)
+  workflow_dispatch: {}       # botão "Run workflow" para rodar na hora
+
+permissions:
+  contents: write             # para salvar o estado.json (evita aviso repetido)
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+jobs:
+  checar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Checar ofertas
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          LIMITE_S25ULTRA: ${{ vars.LIMITE_S25ULTRA }}
+          LIMITE_A57: ${{ vars.LIMITE_A57 }}
+          INCLUIR_USADOS: ${{ vars.INCLUIR_USADOS }}
+        run: python monitor.py
+      - name: Salvar estado
+        run: |
+          git config user.name "monitor-bot"
+          git config user.email "monitor-bot@users.noreply.github.com"
+          git add estado.json
+          git diff --cached --quiet || (git commit -m "Atualiza estado" && git push)
