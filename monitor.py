@@ -9,7 +9,8 @@ Ajustes opcionais (variáveis do repositório):
   LIMITE_S25ULTRA   padrão 4000   (valor "Sai por", já com cashback)
   LIMITE_A57        padrão 2000
   INCLUIR_USADOS    "1" para incluir usados/recondicionados (padrão: não)
-  QUEDA_MINIMA      padrão 0.05   (avisa também quando o preço cai 5%+)
+  QUEDA_MINIMA      padrão 0.01   (avisa quando fica 1%+ abaixo do preço normal)
+  DIAS_NORMAL       padrão 14     (preço normal = mediana dos últimos 14 dias)
 """
 import html
 import json
@@ -41,7 +42,14 @@ ACESSORIO = re.compile(
 CELULAR = re.compile(r"celular|smartphone|galaxy|combo|\d+\s?gb", re.I)
 USADO = re.compile(r"usado|seminovo|recondicionado|vitrine|refurb|excelente -|muito bom -|bom -", re.I)
 INCLUIR_USADOS = os.getenv("INCLUIR_USADOS") == "1"
-QUEDA_MINIMA = float(os.getenv("QUEDA_MINIMA") or 0.05)
+QUEDA_MINIMA = float(os.getenv("QUEDA_MINIMA") or 0.01)  # 1%: qualquer queda real abaixo do normal
+DIAS_NORMAL = int(os.getenv("DIAS_NORMAL") or 14)          # "normal" = mediana dos últimos 14 dias
+
+
+def mediana(xs):
+    xs = sorted(xs)
+    n = len(xs)
+    return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
 TOKEN = os.getenv("TELEGRAM_TOKEN", "").strip()
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 
@@ -134,7 +142,15 @@ def main():
         if not CHAT_ID:
             sys.exit("Mande qualquer mensagem para o seu bot no Telegram e rode de novo.")
         print("Chat id encontrado.")
-    primeira_vez = not estado
+    # formato novo: {"itens": {pid: {"dias": {data: preço}, "ultimo": preço, "avisado": preço|None}}}
+    if "itens" in estado:
+        itens = estado["itens"]
+    else:  # migra o formato antigo {pid: preço}
+        ontem = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 86400 - 3 * 3600))
+        itens = {pid: {"dias": {ontem: v}, "ultimo": v, "avisado": None}
+                 for pid, v in estado.items() if isinstance(v, (int, float))}
+    primeira_vez = not itens
+    hoje = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 3 * 3600))  # horário de Brasília
 
     achados = {}
     for termo in BUSCAS:
@@ -146,20 +162,28 @@ def main():
     print(f"{len(achados)} aparelhos encontrados")
 
     alertas = []
-    novo_estado = {}
     for pid, (modelo, v, p) in achados.items():
         limite = MODELOS[modelo][1]
-        antes = estado.get(pid)
-        novo_estado[pid] = v
-        abaixo = v <= limite
-        caiu = antes is not None and v <= antes * (1 - QUEDA_MINIMA)
-        ja_avisado_abaixo = antes is not None and antes <= limite and v >= antes
-        if (abaixo and not ja_avisado_abaixo) or caiu:
-            motivo = "abaixo do seu limite" if abaixo else f"caiu de {brl(antes)}"
-            alertas.append((v, modelo, p, motivo))
+        it = itens.setdefault(pid, {"dias": {}, "ultimo": None, "avisado": None})
+        anteriores = [x for d, x in sorted(it["dias"].items()) if d != hoje][-DIAS_NORMAL:]
+        normal = mediana(anteriores) if anteriores else None
+        motivos = []
+        if normal and v < normal * (1 - QUEDA_MINIMA):
+            motivos.append(f"abaixo do normal: costuma sair por {brl(normal)} ({(1 - v / normal) * 100:.0f}% mais barato)")
+        if v <= limite:
+            motivos.append(f"dentro do seu limite de {brl(limite)}")
+        ja_avisado = it.get("avisado") is not None and v >= it["avisado"]
+        if motivos and not ja_avisado:
+            alertas.append((v, modelo, p, " · ".join(motivos)))
+            it["avisado"] = v
+        elif not motivos:
+            it["avisado"] = None  # voltou ao normal: um próximo desconto será avisado de novo
+        it["ultimo"] = v
+        it["dias"][hoje] = min(v, it["dias"].get(hoje, v))
+        it["dias"] = dict(sorted(it["dias"].items())[-(DIAS_NORMAL + 1):])
 
     if primeira_vez:
-        linhas = ["✅ <b>Bot ligado!</b> Vou checar o Shopping do Inter a cada 20 minutos.",
+        linhas = ["✅ <b>Bot ligado!</b> Vou checar o Shopping do Inter várias vezes por dia.",
                   "Limites (valor “Sai por”): " + " · ".join(f"{k} até {brl(v[1])}" for k, v in MODELOS.items()),
                   "", "Mais baratos agora:"]
         for modelo in MODELOS:
@@ -168,26 +192,23 @@ def main():
                 v, p = lista[0]
                 linhas.append(f"• {modelo}: {brl(v)} — {p.get('sellerName', '')}\n  {SITE}/{p.get('slug', '')}")
         enviar("\n".join(linhas))
-
-    if alertas:
+    elif alertas:
         alertas.sort(key=lambda a: a[0])
-        linhas = ["🔥 <b>Oferta no Shopping do Inter</b>"]
+        linhas = ["📉 <b>Preço mais baixo no Shopping do Inter</b>"]
         for v, modelo, p, motivo in alertas[:15]:
             nome = html.escape((p.get("name") or "")[:110])
             linhas.append(
                 f"\n<b>{nome}</b>\n{html.escape(p.get('sellerName', ''))} · {p.get('price', '')}"
                 f" · cashback {p.get('fullCashback', '-')}\n"
-                f"Sai por <b>{brl(v)}</b> ({motivo})\n{SITE}/{p.get('slug', '')}")
+                f"Sai por <b>{brl(v)}</b>\n{motivo}\n{SITE}/{p.get('slug', '')}")
         enviar("\n".join(linhas))
         print(f"{len(alertas)} alerta(s) enviado(s)")
 
-    # guarda também itens que sumiram nesta rodada, para não re-avisar se voltarem iguais
-    for pid, v in estado.items():
-        novo_estado.setdefault(pid, v)
+    novo = {"itens": itens}
     if not os.getenv("TELEGRAM_CHAT_ID", "").strip():
-        novo_estado["_chat_id"] = CHAT_ID
+        novo["_chat_id"] = CHAT_ID
     with open(ESTADO, "w", encoding="utf-8") as f:
-        json.dump(novo_estado, f, ensure_ascii=False, indent=0, sort_keys=True)
+        json.dump(novo, f, ensure_ascii=False, indent=0, sort_keys=True)
 
 
 if __name__ == "__main__":

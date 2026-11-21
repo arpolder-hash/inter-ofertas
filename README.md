@@ -16,8 +16,9 @@ Checa o Shopping do Inter a cada 20 minutos e avisa no Telegram quando aparece
 
 ## Como avisa
 
-- Produto novo com valor “Sai por” (já com cashback) até o limite → aviso.
-- Produto que já existia e caiu 5% ou mais → aviso.
-- A mesma oferta não é repetida a cada rodada (o `estado.json` guarda o último preço).
+- **Abaixo do normal:** o robô guarda o preço de cada aparelho dia a dia. O preço normal é a mediana dos
+  últimos 14 dias. Se o valor “Sai por” ficar 1% ou mais abaixo do normal, chega aviso.
+- **Dentro do limite:** produto com valor “Sai por” até o limite do modelo → aviso.
+- Não repete o mesmo aviso. Só avisa de novo se o preço cair ainda mais, ou se voltar ao normal e depois cair outra vez.
 
 Para parar: aba **Actions** → workflow → menu “…” → *Disable workflow*.
