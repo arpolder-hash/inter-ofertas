@@ -40,7 +40,9 @@ MODELOS = {
 ACESSORIO = re.compile(
     r"capa|case|pel[ií]cula|vidro|caneta|carregador|cabo|fonte|suporte|"
     r"lente|protetor|adesivo|skin|bateria externa|power ?bank|anel|pulseira|"
-    r"carteira|clear|tpu|silicone|kit pel", re.I)
+    r"carteira|clear|tpu|silicone|kit pel|gaiola|cage|adaptador|mount|trip[eé]|bast[aã]o|"
+    r"estabilizador|gimbal|ring ?light|\\bpara (o )?(samsung|galaxy|celular)|\\bp/|compat[ií]vel", re.I)
+PRECO_MINIMO = 800  # nenhum desses celulares novos custa menos que isso: abaixo, é acessório
 CELULAR = re.compile(r"celular|smartphone|galaxy|combo|\d+\s?gb", re.I)
 USADO = re.compile(r"usado|seminovo|recondicionado|vitrine|refurb|excelente -|muito bom -|bom -", re.I)
 INCLUIR_USADOS = os.getenv("INCLUIR_USADOS") == "1"
@@ -164,7 +166,7 @@ def main():
         for p in buscar(termo):
             modelo = classificar(p)
             v = preco(p)
-            if modelo and v and p.get("id"):
+            if modelo and v and v >= PRECO_MINIMO and p.get("id"):
                 achados[p["id"]] = (modelo, v, p)
     print(f"{len(achados)} aparelhos encontrados")
 
