@@ -21,13 +21,15 @@ import time
 import urllib.parse
 import urllib.request
 
-API = "https://marketplace-api.web.bancointer.com.br/site/affiliate/inter/v1/search/products"
+BASE = "https://marketplace-api.web.bancointer.com.br/site/affiliate/inter/v1"
+# duas vitrines do Shopping do Inter: "No Inter" (compra dentro do app) e "Nos sites parceiros"
+VITRINES = {"inter": BASE + "/ecommerce/search/products", "parceiro": BASE + "/search/products"}
 SITE = "https://shopping.inter.co"
 BUSCAS = ["galaxy s25 ultra", "s25 ultra", "galaxy a57", "a57"]
 PAGINAS = 10  # 36 produtos por página
 ESTADO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "estado.json")
 
-RELOGIO = re.compile(r"watch|rel[oó]gio", re.I)
+RELOGIO = re.compile(r"watch|rel[oó]gio|galaxy fit|smartband", re.I)
 MODELOS = {
     "S25 Ultra": (re.compile(r"s\s?25\s*ultra", re.I), float(os.getenv("LIMITE_S25ULTRA") or 4000)),
     "A57": (re.compile(r"\ba\s?57\b", re.I), float(os.getenv("LIMITE_A57") or 2000)),
@@ -68,19 +70,24 @@ def get_json(url, data=None):
 
 def buscar(termo):
     vistos = []
-    for pag in range(PAGINAS):
-        q = urllib.parse.urlencode({"lang": "pt-BR", "searchText": termo,
-                                    "offset": pag * 36, "limit": 36})
-        try:
-            j = get_json(f"{API}?{q}")
-        except Exception as e:  # noqa: BLE001
-            print(f"[aviso] falha na busca '{termo}' pág {pag}: {e}")
-            break
-        prods = j.get("products") or []
-        vistos += prods
-        if len(prods) < 36 or (j.get("pagination") or {}).get("isLastPage"):
-            break
-        time.sleep(0.5)
+    for origem, url in VITRINES.items():
+        for pag in range(PAGINAS):
+            q = urllib.parse.urlencode({"lang": "pt-BR", "searchText": termo,
+                                        "offset": pag * 36, "limit": 36})
+            try:
+                j = get_json(f"{url}?{q}")
+            except Exception as e:  # noqa: BLE001
+                print(f"[aviso] falha na busca '{termo}' ({origem}) pág {pag}: {e}")
+                break
+            prods = j.get("products") or []
+            for p in prods:
+                p["_origem"] = origem
+                if origem == "inter":  # ids das duas vitrines são de sistemas diferentes
+                    p["id"] = f"inter:{p.get('id')}"
+            vistos += prods
+            if len(prods) < 36 or (j.get("pagination") or {}).get("isLastPage"):
+                break
+            time.sleep(0.5)
     return vistos
 
 
@@ -198,9 +205,10 @@ def main():
         for v, modelo, p, motivo in alertas[:15]:
             nome = html.escape((p.get("name") or "")[:110])
             linhas.append(
-                f"\n<b>{nome}</b>\n{html.escape(p.get('sellerName', ''))} · {p.get('price', '')}"
-                f" · cashback {p.get('fullCashback', '-')}\n"
-                f"Sai por <b>{brl(v)}</b>\n{motivo}\n{SITE}/{p.get('slug', '')}")
+                f"\n<b>{nome}</b>\n{html.escape(p.get('sellerName', ''))}"
+                f" ({'compra no Inter' if p.get('_origem') == 'inter' else 'site parceiro'})\n"
+                f"Preço {p.get('price', '')} − cashback {p.get('fullCashback', '-')}\n"
+                f"= sai por <b>{brl(v)}</b>\n{motivo}\n{SITE}/{p.get('slug', '')}")
         enviar("\n".join(linhas))
         print(f"{len(alertas)} alerta(s) enviado(s)")
 

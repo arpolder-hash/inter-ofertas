@@ -1,6 +1,6 @@
 # Monitor de ofertas — Shopping do Inter
 
-Checa o Shopping do Inter a cada 20 minutos e avisa no Telegram quando aparece
+Checa o Shopping do Inter (vitrine "No Inter" e "Nos sites parceiros") e avisa no Telegram quando aparece
 **Galaxy S25 Ultra** ou **Galaxy A57** (inclusive combos com Watch/Buds) abaixo do limite.
 
 ## Configurar (uma vez)
